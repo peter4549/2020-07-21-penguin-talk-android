@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Penguin Talk</string>
+    <string name="splash_image">Splash image</string>
+    <string name="splash_background">splash_background</string>
+
+    <string name="logo">Logo</string>
+    <string name="email">이메일</string>
+    <string name="password">패스워드</string>
+    <string name="sign_in">로그인</string>
+    <string name="name">이름</string>
+    <string name="sign_up">회원가입</string>
+    <string name="message">메시지</string>
+    <string name="send">전송</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>

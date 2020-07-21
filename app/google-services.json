@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "725280967797",
+    "firebase_url": "https://penguin-talk.firebaseio.com",
+    "project_id": "penguin-talk",
+    "storage_bucket": "penguin-talk.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:725280967797:android:f80ea37462a017eba6bc3c",
+        "android_client_info": {
+          "package_name": "com.duke.elliot.kim.java.penguintalk"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "725280967797-0phqgkb75r2mbgf2hv6da4msvhujc47d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2AyAcz91E7qo1A-gGhrAjJxAz7S3Kb78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "725280967797-0phqgkb75r2mbgf2hv6da4msvhujc47d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
