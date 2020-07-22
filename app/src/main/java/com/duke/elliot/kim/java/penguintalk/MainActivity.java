@@ -8,8 +8,15 @@ import android.view.MenuItem;
 
 import com.duke.elliot.kim.java.penguintalk.fragments.ChatFragment;
 import com.duke.elliot.kim.java.penguintalk.fragments.PeopleFragment;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,12 +44,28 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
+        // passPushTokenToServer();
     }
 
     @Override
     protected void onDestroy() {
         FirebaseAuth.getInstance().signOut();
         super.onDestroy();
+    }
+
+    void passPushTokenToServer() {
+        FirebaseInstanceId.getInstance().getInstanceId().addOnSuccessListener(new OnSuccessListener<InstanceIdResult>() {
+            @Override
+            public void onSuccess(InstanceIdResult instanceIdResult) {
+                String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                String token = instanceIdResult.getToken();
+
+                Map<String, Object> map = new HashMap<>();
+                map.put("pushToken", token);
+
+                FirebaseDatabase.getInstance().getReference()
+                        .child("users").child(uid).updateChildren(map);
+            }
+        });
     }
 }

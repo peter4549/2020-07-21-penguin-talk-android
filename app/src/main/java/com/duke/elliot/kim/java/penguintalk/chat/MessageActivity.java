@@ -7,10 +7,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.textclassifier.TextLinks;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -22,6 +24,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.duke.elliot.kim.java.penguintalk.R;
 import com.duke.elliot.kim.java.penguintalk.model.ChatModel;
+import com.duke.elliot.kim.java.penguintalk.model.NotificationModel;
 import com.duke.elliot.kim.java.penguintalk.model.UserModel;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -33,7 +36,11 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
+import com.google.gson.Gson;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,9 +48,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-public class MessageActivity extends AppCompatActivity {
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
-    private final String TAG = "MessageActivity";
+public class MessageActivity extends AppCompatActivity {
 
     private Button buttonSend;
     private EditText editTextMessage;
@@ -52,6 +65,7 @@ public class MessageActivity extends AppCompatActivity {
     private String uid;
     private String chatRoomId;
     private SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss", Locale.getDefault());
+    private UserModel otherUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +107,7 @@ public class MessageActivity extends AppCompatActivity {
                                 .push().setValue(comment).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
+                                sendCloudMessage();
                                 editTextMessage.setText("");
                             }
                         });
@@ -120,11 +135,15 @@ public class MessageActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 for(DataSnapshot dataSnapshot: snapshot.getChildren()) {
                     ChatModel chat = dataSnapshot.getValue(ChatModel.class);
+
+                    if (chat == null)
+                        return;
+
                     if (chat.users.containsKey(otherUid)) {
                         chatRoomId = dataSnapshot.getKey();
                         buttonSend.setEnabled(true);
                         recyclerViewMessage.setLayoutManager(new LinearLayoutManager(MessageActivity.this));
-                        recyclerViewMessage.setAdapter(new RecyclerViewAdapter());
+                        recyclerViewMessage.setAdapter(new MessageRecyclerViewAdapter());
 
                         if (!editTextMessage.getText().toString().equals("")) {
                             ChatModel.Comment comment = new ChatModel.Comment();
@@ -144,21 +163,52 @@ public class MessageActivity extends AppCompatActivity {
 
             }
         });
+    }
+
+    void sendCloudMessage() {
+        Gson gson = new Gson();
+        String userName = FirebaseAuth.getInstance().getCurrentUser().getDisplayName();
+        NotificationModel notification = new NotificationModel();
+        notification.to = otherUser.pushToken;
+        notification.notification.title = userName;
+        notification.notification.text = editTextMessage.getText().toString();
+
+        notification.data.title = userName;
+        notification.data.text = editTextMessage.getText().toString();
+
+        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf8"), gson.toJson(notification));
+        Request request = new Request.Builder().header("Content-Type", "application/json")
+                .addHeader("Authorization","key=AAAAqN4dTHU:APA91bGYSOt-gxSnnkWLGdEsrqli0kGqaQgUnDLftKWjAFOD1VZdz0UTHw4Y7Nv07_Eaj1y5IWMzMm5eVQNjqc8qZVxeYtiakVLNllyamPmgxS-2kmRfhPXe8YbpGZkBmQ5MpttKlKQg")
+                .url("https://fcm.googleapis.com/fcm/send")
+                .post(requestBody)
+                .build();
+
+        OkHttpClient okHttpClient = new OkHttpClient();
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+
+            }
+
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+
+            }
+        });
 
     }
 
-    class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
+    class MessageRecyclerViewAdapter extends RecyclerView.Adapter<MessageRecyclerViewAdapter.ViewHolder> {
 
         List<ChatModel.Comment> comments;
-        UserModel user;
 
-        public RecyclerViewAdapter() {
+        MessageRecyclerViewAdapter() {
             comments = new ArrayList<>();
 
             FirebaseDatabase.getInstance().getReference().child("users").child(otherUid).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    user = snapshot.getValue(UserModel.class);
+                    otherUser = snapshot.getValue(UserModel.class);
                     getMessageList();
                 }
 
@@ -225,14 +275,14 @@ public class MessageActivity extends AppCompatActivity {
 
         @NonNull
         @Override
-        public RecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public MessageRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_view_message, parent, false);
 
             return new ViewHolder(view);
         }
 
         @Override
-        public void onBindViewHolder(@NonNull RecyclerViewAdapter.ViewHolder holder, int position) {
+        public void onBindViewHolder(@NonNull MessageRecyclerViewAdapter.ViewHolder holder, int position) {
             if (comments.get(position).uid.equals(uid)) {
                 holder.textViewMessage.setText(comments.get(position).message);
                 holder.textViewMessage.setBackgroundResource(R.drawable.chat_bubble_right);
@@ -241,10 +291,10 @@ public class MessageActivity extends AppCompatActivity {
                 holder.linearLayoutItemView.setGravity(Gravity.END);
             } else {
                 Glide.with(holder.imageViewProfile.getContext())
-                        .load(user.profilePictureUrl)
+                        .load(otherUser.profilePictureUrl)
                         .apply(new RequestOptions().circleCrop())
                         .into(holder.imageViewProfile);
-                holder.textViewName.setText(user.name);
+                holder.textViewName.setText(otherUser.name);
                 holder.linearLayoutMessage.setVisibility(View.VISIBLE);
                 holder.textViewMessage.setBackgroundResource(R.drawable.chat_bubble_left);
                 holder.textViewMessage.setText(comments.get(position).message);

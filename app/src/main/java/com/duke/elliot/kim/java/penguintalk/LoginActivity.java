@@ -19,8 +19,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 
-import java.util.Objects;
-
 public class LoginActivity extends AppCompatActivity {
 
     private EditText editTextId;
@@ -42,8 +40,6 @@ public class LoginActivity extends AppCompatActivity {
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     startActivity(intent);
                     finish();
-                } else {
-
                 }
             }
         };

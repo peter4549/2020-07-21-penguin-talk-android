@@ -31,7 +31,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EventListener;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -59,7 +58,7 @@ public class ChatFragment extends Fragment {
         private String uid;
         private ArrayList<String> otherUsers = new ArrayList<>();
 
-        public ChatRecyclerViewAdapter() {
+        ChatRecyclerViewAdapter() {
             uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
             FirebaseDatabase.getInstance().getReference()
