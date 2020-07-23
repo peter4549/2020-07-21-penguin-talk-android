@@ -3,9 +3,11 @@ package com.duke.elliot.kim.java.penguintalk.chat;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.util.Predicate;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -22,6 +24,7 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.duke.elliot.kim.java.penguintalk.LinearLayoutManagerWrapper;
 import com.duke.elliot.kim.java.penguintalk.R;
 import com.duke.elliot.kim.java.penguintalk.model.ChatModel;
 import com.duke.elliot.kim.java.penguintalk.model.NotificationModel;
@@ -33,6 +36,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
@@ -44,8 +48,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 
 import okhttp3.Call;
@@ -66,6 +72,8 @@ public class MessageActivity extends AppCompatActivity {
     private String chatRoomId;
     private SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss", Locale.getDefault());
     private UserModel otherUser;
+    private DatabaseReference databaseReference;
+    private ChildEventListener childEventListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,18 +98,14 @@ public class MessageActivity extends AppCompatActivity {
                     buttonSend.setEnabled(false);
                     FirebaseDatabase.getInstance().getReference()
                             .child("chat_rooms").push().setValue(chat)
-                            .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                @Override
-                                public void onSuccess(Void aVoid) {
-                                    checkChatRoom();
-                                }
-                            });
+                            .addOnSuccessListener(aVoid -> checkChatRoom());
                 } else {
                     if (!editTextMessage.getText().toString().equals("")) {
                         ChatModel.Comment comment = new ChatModel.Comment();
                         comment.message = editTextMessage.getText().toString();
                         comment.uid = uid;
                         comment.timestamp = ServerValue.TIMESTAMP;
+                        comment.readUsers.put(uid, true);
                         FirebaseDatabase.getInstance().getReference()
                                 .child("chat_rooms").child(chatRoomId).child("comments")
                                 .push().setValue(comment).addOnCompleteListener(new OnCompleteListener<Void>() {
@@ -123,6 +127,7 @@ public class MessageActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        databaseReference.removeEventListener(childEventListener);
         finish();
         overridePendingTransition(R.anim.anim_from_left, R.anim.anim_to_right);
     }
@@ -142,7 +147,7 @@ public class MessageActivity extends AppCompatActivity {
                     if (chat.users.containsKey(otherUid)) {
                         chatRoomId = dataSnapshot.getKey();
                         buttonSend.setEnabled(true);
-                        recyclerViewMessage.setLayoutManager(new LinearLayoutManager(MessageActivity.this));
+                        recyclerViewMessage.setLayoutManager(new LinearLayoutManagerWrapper(MessageActivity.this));
                         recyclerViewMessage.setAdapter(new MessageRecyclerViewAdapter());
 
                         if (!editTextMessage.getText().toString().equals("")) {
@@ -150,9 +155,15 @@ public class MessageActivity extends AppCompatActivity {
                             comment.message = editTextMessage.getText().toString();
                             comment.uid = uid;
                             comment.timestamp = ServerValue.TIMESTAMP;
+                            comment.readUsers.put(uid, true);
                             FirebaseDatabase.getInstance().getReference()
                                     .child("chat_rooms").child(chatRoomId).child("comments")
-                                    .push().setValue(comment);
+                                    .push().setValue(comment).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    editTextMessage.setText("");
+                                }
+                            });
                         }
                     }
                 }
@@ -205,7 +216,8 @@ public class MessageActivity extends AppCompatActivity {
         MessageRecyclerViewAdapter() {
             comments = new ArrayList<>();
 
-            FirebaseDatabase.getInstance().getReference().child("users").child(otherUid).addListenerForSingleValueEvent(new ValueEventListener() {
+            FirebaseDatabase.getInstance().getReference()
+                    .child("users").child(otherUid).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     otherUser = snapshot.getValue(UserModel.class);
@@ -222,36 +234,64 @@ public class MessageActivity extends AppCompatActivity {
         }
 
         private void getMessageList() {
-            FirebaseDatabase.getInstance().getReference()
-                    .child("chat_rooms").child(chatRoomId).child("comments")
-                    .addChildEventListener(new ChildEventListener() {
-                        @Override
-                        public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                            comments.add(snapshot.getValue(ChatModel.Comment.class));
-                            notifyItemInserted(comments.size());
-                            recyclerViewMessage.scrollToPosition(comments.size() - 1);
-                        }
+            databaseReference = FirebaseDatabase.getInstance().getReference()
+                    .child("chat_rooms").child(chatRoomId).child("comments");
 
-                        @Override
-                        public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+            childEventListener = databaseReference.addChildEventListener(new ChildEventListener() {
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                    String key = snapshot.getKey();
+                    Map<String, Object> readUsersMap = new HashMap<>();
+                    ChatModel.Comment comment = snapshot.getValue(ChatModel.Comment.class);
+                    Log.d("THISBEFOREPUT", comment.readUsers.keySet().toString());
+                    comment.readUsers.put(uid, true);
+                    Log.d("THISTHISWHY", comment.readUsers.keySet().toString());
+                    Log.d("THISTHISWHYHI", comment.message);
+                    Log.d("MYID", uid);
+                    readUsersMap.put(key, comment);
+                    comments.add(comment);
 
-                        }
+                    FirebaseDatabase.getInstance().getReference()
+                            .child("chat_rooms").child(chatRoomId).child("comments")
+                            .updateChildren(readUsersMap)
+                            .addOnCompleteListener(task -> {
+                                notifyItemInserted(comments.size() - 1);
+                                recyclerViewMessage.scrollToPosition(comments.size() - 1);
+                            });
 
-                        @Override
-                        public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+                    /* 이 조건을, 기존과 같으면~ 으로 할 것.
+                    if (!comments.get(comments.size() - 1).readUsers.containsKey(uid)) {
 
-                        }
+                    } else {
+                        notifyItemInserted(comments.size() - 1);
+                        recyclerViewMessage.scrollToPosition(comments.size() - 1);
+                    }
 
-                        @Override
-                        public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                     */
+                }
 
-                        }
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                    ChatModel.Comment comment = snapshot.getValue(ChatModel.Comment.class);
+                    comments.set(comments.size() - 1, comment);
+                    notifyItemChanged(comments.size() - 1);
+                }
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot snapshot) {
 
-                        }
-                    });
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+
+                }
+            });
         }
 
         private class ViewHolder extends RecyclerView.ViewHolder {
@@ -261,6 +301,8 @@ public class MessageActivity extends AppCompatActivity {
             LinearLayout linearLayoutMessage;
             LinearLayout linearLayoutItemView;
             TextView textViewTimestamp;
+            TextView textViewReadCountEnd;
+            TextView textViewReadCountStart;
 
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -270,6 +312,8 @@ public class MessageActivity extends AppCompatActivity {
                 linearLayoutMessage = itemView.findViewById(R.id.linear_layout_message);
                 linearLayoutItemView = itemView.findViewById(R.id.linear_layout_item_view);
                 textViewTimestamp = itemView.findViewById(R.id.text_view_timestamp);
+                textViewReadCountEnd = itemView.findViewById(R.id.text_view_read_count_end);
+                textViewReadCountStart = itemView.findViewById(R.id.text_view_read_count_start);
             }
         }
 
@@ -289,6 +333,7 @@ public class MessageActivity extends AppCompatActivity {
                 holder.linearLayoutMessage.setVisibility(View.GONE);
                 holder.textViewMessage.setTextSize(24);
                 holder.linearLayoutItemView.setGravity(Gravity.END);
+                setReadCount(position, holder.textViewReadCountStart);
             } else {
                 Glide.with(holder.imageViewProfile.getContext())
                         .load(otherUser.profilePictureUrl)
@@ -300,6 +345,7 @@ public class MessageActivity extends AppCompatActivity {
                 holder.textViewMessage.setText(comments.get(position).message);
                 holder.textViewMessage.setTextSize(24);
                 holder.linearLayoutItemView.setGravity(Gravity.START);
+                setReadCount(position, holder.textViewReadCountEnd);
             }
 
             long unixTime = (long) comments.get(position).timestamp;
@@ -309,9 +355,33 @@ public class MessageActivity extends AppCompatActivity {
             holder.textViewTimestamp.setText(timestamp);
         }
 
+        void setReadCount(final int position, final TextView textView) {
+            FirebaseDatabase.getInstance().getReference()
+                    .child("chat_rooms").child(chatRoomId).child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    Map<String, Boolean> users = (Map<String, Boolean>) snapshot.getValue();
+                    int count = users.size() - comments.get(position).readUsers.size();
+
+                    if (count > 0) {
+                        textView.setVisibility(View.VISIBLE);
+                        textView.setText(String.valueOf(count));
+                    } else {
+                        textView.setVisibility(View.INVISIBLE);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+
+                }
+            });
+        }
+
         @Override
         public int getItemCount() {
             return comments.size();
         }
     }
 }
+

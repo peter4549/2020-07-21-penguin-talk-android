@@ -51,7 +51,7 @@ public class FirebaseMessagingService extends com.google.firebase.messaging.Fire
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(channelId,
-                    "Channel",
+                    "channel title",
                     NotificationManager.IMPORTANCE_DEFAULT);
             notificationManager.createNotificationChannel(channel);
         }

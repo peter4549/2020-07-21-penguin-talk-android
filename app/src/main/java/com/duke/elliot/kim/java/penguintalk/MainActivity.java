@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
 
+import com.duke.elliot.kim.java.penguintalk.fragments.AccountFragment;
 import com.duke.elliot.kim.java.penguintalk.fragments.ChatFragment;
 import com.duke.elliot.kim.java.penguintalk.fragments.PeopleFragment;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -37,6 +38,10 @@ public class MainActivity extends AppCompatActivity {
                     case R.id.menu_chat:
                         getSupportFragmentManager().beginTransaction()
                                 .replace(R.id.frame_layout, new ChatFragment()).commit();
+                        return true;
+                    case R.id.menu_account:
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.frame_layout, new AccountFragment()).commit();
                         return true;
                 }
 

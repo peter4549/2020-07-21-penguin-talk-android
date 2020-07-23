@@ -5,4 +5,5 @@ public class UserModel {
     public String profilePictureUrl;
     public String uid;
     public String pushToken;
+    public String comment;
 }

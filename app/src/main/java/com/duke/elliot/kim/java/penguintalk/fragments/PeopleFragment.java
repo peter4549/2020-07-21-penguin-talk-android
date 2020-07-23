@@ -86,12 +86,14 @@ public class PeopleFragment extends Fragment {
 
         private class ViewHolder extends RecyclerView.ViewHolder {
             ImageView imageView;
-            TextView textView;
+            TextView textViewId;
+            TextView textViewComment;
 
             ViewHolder(View view) {
                 super(view);
                 imageView = view.findViewById(R.id.image_view_profile);
-                textView = view.findViewById(R.id.text_view_id);
+                textViewId = view.findViewById(R.id.text_view_id);
+                textViewComment = view.findViewById(R.id.text_view_comment);
             }
         }
 
@@ -120,7 +122,9 @@ public class PeopleFragment extends Fragment {
                 }
             });
 
-            ((ViewHolder)holder).textView.setText(users.get(position).name);
+            ((ViewHolder)holder).textViewId.setText(users.get(position).name);
+            if (users.get(position).comment != null)
+                ((ViewHolder)holder).textViewComment.setText(users.get(position).comment);
         }
 
         @Override
