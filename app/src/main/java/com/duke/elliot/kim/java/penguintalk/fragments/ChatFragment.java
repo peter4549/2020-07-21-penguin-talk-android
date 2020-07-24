@@ -18,6 +18,7 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.duke.elliot.kim.java.penguintalk.R;
+import com.duke.elliot.kim.java.penguintalk.chat.GroupMessageActivity;
 import com.duke.elliot.kim.java.penguintalk.chat.MessageActivity;
 import com.duke.elliot.kim.java.penguintalk.model.ChatModel;
 import com.duke.elliot.kim.java.penguintalk.model.UserModel;
@@ -121,26 +122,31 @@ public class ChatFragment extends Fragment {
 
             Map<String, ChatModel.Comment> map = new TreeMap<>(Collections.reverseOrder());
             map.putAll(chatList.get(position).comments);
-            String lastMessageKey = (String) map.keySet().toArray()[0];
-            viewHolder.textViewLastMessage.setText(chatList.get(position).comments.get(lastMessageKey).message);
-            viewHolder.imageView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Intent intent = new Intent(view.getContext(), MessageActivity.class);
+            if (map.keySet().toArray().length > 0) {
+                String lastMessageKey = (String) map.keySet().toArray()[0];
+                viewHolder.textViewLastMessage.setText(chatList.get(position).comments.get(lastMessageKey).message);
+
+                simpleDateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+                long unixTime = (long) chatList.get(position).comments.get(lastMessageKey).timestamp;
+                Date date = new Date(unixTime);
+                viewHolder.textViewTimestamp.setText(simpleDateFormat.format(date));
+            }
+
+            viewHolder.imageView.setOnClickListener(view -> {
+                Intent intent = null;
+
+                if (chatList.get(position).users.size() > 2) {
+                    intent = new Intent(view.getContext(), GroupMessageActivity.class);
+                } else {
+                    intent = new Intent(view.getContext(), MessageActivity.class);
                     intent.putExtra("otherUid", otherUsers.get(position));
-
-                    ActivityOptions activityOptions =
-                            ActivityOptions.makeCustomAnimation(view.getContext(),
-                                    R.anim.anim_from_right, R.anim.anim_to_left);
-                    startActivity(intent, activityOptions.toBundle());
                 }
+                
+                ActivityOptions activityOptions =
+                        ActivityOptions.makeCustomAnimation(view.getContext(),
+                                R.anim.anim_from_right, R.anim.anim_to_left);
+                startActivity(intent, activityOptions.toBundle());
             });
-
-            simpleDateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
-
-            long unixTime = (long) chatList.get(position).comments.get(lastMessageKey).timestamp;
-            Date date = new Date(unixTime);
-            viewHolder.textViewTimestamp.setText(simpleDateFormat.format(date));
         }
 
         @Override

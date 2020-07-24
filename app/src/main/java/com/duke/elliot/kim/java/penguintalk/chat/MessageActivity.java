@@ -3,18 +3,13 @@ package com.duke.elliot.kim.java.penguintalk.chat;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.util.Predicate;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.textclassifier.TextLinks;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -30,7 +25,6 @@ import com.duke.elliot.kim.java.penguintalk.model.ChatModel;
 import com.duke.elliot.kim.java.penguintalk.model.NotificationModel;
 import com.duke.elliot.kim.java.penguintalk.model.UserModel;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.ChildEventListener;
@@ -74,6 +68,7 @@ public class MessageActivity extends AppCompatActivity {
     private UserModel otherUser;
     private DatabaseReference databaseReference;
     private ChildEventListener childEventListener;
+    int peopleCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,7 +113,6 @@ public class MessageActivity extends AppCompatActivity {
                     } else
                         Toast.makeText(MessageActivity.this, "메시지를 입력해주세요.", Toast.LENGTH_SHORT).show();
                 }
-
             }
         });
 
@@ -127,9 +121,11 @@ public class MessageActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        databaseReference.removeEventListener(childEventListener);
-        finish();
-        overridePendingTransition(R.anim.anim_from_left, R.anim.anim_to_right);
+        if (childEventListener != null) {
+            databaseReference.removeEventListener(childEventListener);
+            finish();
+            overridePendingTransition(R.anim.anim_from_left, R.anim.anim_to_right);
+        }
     }
 
     void checkChatRoom() {
@@ -229,8 +225,6 @@ public class MessageActivity extends AppCompatActivity {
 
                 }
             });
-
-
         }
 
         private void getMessageList() {
@@ -243,11 +237,8 @@ public class MessageActivity extends AppCompatActivity {
                     String key = snapshot.getKey();
                     Map<String, Object> readUsersMap = new HashMap<>();
                     ChatModel.Comment comment = snapshot.getValue(ChatModel.Comment.class);
-                    Log.d("THISBEFOREPUT", comment.readUsers.keySet().toString());
+
                     comment.readUsers.put(uid, true);
-                    Log.d("THISTHISWHY", comment.readUsers.keySet().toString());
-                    Log.d("THISTHISWHYHI", comment.message);
-                    Log.d("MYID", uid);
                     readUsersMap.put(key, comment);
                     comments.add(comment);
 
@@ -258,16 +249,6 @@ public class MessageActivity extends AppCompatActivity {
                                 notifyItemInserted(comments.size() - 1);
                                 recyclerViewMessage.scrollToPosition(comments.size() - 1);
                             });
-
-                    /* 이 조건을, 기존과 같으면~ 으로 할 것.
-                    if (!comments.get(comments.size() - 1).readUsers.containsKey(uid)) {
-
-                    } else {
-                        notifyItemInserted(comments.size() - 1);
-                        recyclerViewMessage.scrollToPosition(comments.size() - 1);
-                    }
-
-                     */
                 }
 
                 @Override
@@ -356,26 +337,38 @@ public class MessageActivity extends AppCompatActivity {
         }
 
         void setReadCount(final int position, final TextView textView) {
-            FirebaseDatabase.getInstance().getReference()
-                    .child("chat_rooms").child(chatRoomId).child("users").addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    Map<String, Boolean> users = (Map<String, Boolean>) snapshot.getValue();
-                    int count = users.size() - comments.get(position).readUsers.size();
+            if (peopleCount == 0) {
+                FirebaseDatabase.getInstance().getReference()
+                        .child("chat_rooms").child(chatRoomId).child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        Map<String, Boolean> users = (Map<String, Boolean>) snapshot.getValue();
+                        peopleCount = users.size();
+                        int count = peopleCount - comments.get(position).readUsers.size();
 
-                    if (count > 0) {
-                        textView.setVisibility(View.VISIBLE);
-                        textView.setText(String.valueOf(count));
-                    } else {
-                        textView.setVisibility(View.INVISIBLE);
+                        if (count > 0) {
+                            textView.setVisibility(View.VISIBLE);
+                            textView.setText(String.valueOf(count));
+                        } else {
+                            textView.setVisibility(View.INVISIBLE);
+                        }
                     }
-                }
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
 
+                    }
+                });
+            } else {
+                int count = peopleCount - comments.get(position).readUsers.size();
+
+                if (count > 0) {
+                    textView.setVisibility(View.VISIBLE);
+                    textView.setText(String.valueOf(count));
+                } else {
+                    textView.setVisibility(View.INVISIBLE);
                 }
-            });
+            }
         }
 
         @Override
