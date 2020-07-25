@@ -118,7 +118,7 @@ public class SelectFriendsActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, final int position) {
             Glide.with(holder.itemView.getContext())
-                    .load(users.get(position).profilePictureUrl)
+                    .load(users.get(position).profileImageUrl)
                     .apply(new RequestOptions().circleCrop())
                     .into(((ViewHolder)holder).imageView);
 

@@ -56,6 +56,7 @@ public class ChatFragment extends Fragment {
     class ChatRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
         private List<ChatModel> chatList = new ArrayList<>();
+        private List<String> keys = new ArrayList<>();
         private String uid;
         private ArrayList<String> otherUsers = new ArrayList<>();
 
@@ -70,6 +71,7 @@ public class ChatFragment extends Fragment {
                     chatList.clear();
                     for (DataSnapshot item: snapshot.getChildren()) {
                         chatList.add(item.getValue(ChatModel.class));
+                        keys.add(item.getKey());
                     }
 
                     notifyDataSetChanged();
@@ -107,7 +109,7 @@ public class ChatFragment extends Fragment {
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     UserModel user = snapshot.getValue(UserModel.class);
                     Glide.with(viewHolder.itemView.getContext())
-                            .load(user.profilePictureUrl)
+                            .load(user.profileImageUrl)
                             .apply(new RequestOptions().circleCrop())
                             .into(viewHolder.imageView);
 
@@ -137,11 +139,12 @@ public class ChatFragment extends Fragment {
 
                 if (chatList.get(position).users.size() > 2) {
                     intent = new Intent(view.getContext(), GroupMessageActivity.class);
+                    intent.putExtra("destinationRoom", keys.get(position));
                 } else {
                     intent = new Intent(view.getContext(), MessageActivity.class);
                     intent.putExtra("otherUid", otherUsers.get(position));
                 }
-                
+
                 ActivityOptions activityOptions =
                         ActivityOptions.makeCustomAnimation(view.getContext(),
                                 R.anim.anim_from_right, R.anim.anim_to_left);

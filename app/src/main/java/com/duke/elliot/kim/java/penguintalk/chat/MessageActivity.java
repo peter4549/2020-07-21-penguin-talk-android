@@ -140,7 +140,7 @@ public class MessageActivity extends AppCompatActivity {
                     if (chat == null)
                         return;
 
-                    if (chat.users.containsKey(otherUid)) {
+                    if (chat.users.containsKey(otherUid) && chat.users.size() == 2) {
                         chatRoomId = dataSnapshot.getKey();
                         buttonSend.setEnabled(true);
                         recyclerViewMessage.setLayoutManager(new LinearLayoutManagerWrapper(MessageActivity.this));
@@ -317,7 +317,7 @@ public class MessageActivity extends AppCompatActivity {
                 setReadCount(position, holder.textViewReadCountStart);
             } else {
                 Glide.with(holder.imageViewProfile.getContext())
-                        .load(otherUser.profilePictureUrl)
+                        .load(otherUser.profileImageUrl)
                         .apply(new RequestOptions().circleCrop())
                         .into(holder.imageViewProfile);
                 holder.textViewName.setText(otherUser.name);
